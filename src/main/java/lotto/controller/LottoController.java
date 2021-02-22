@@ -4,38 +4,39 @@ import lotto.domain.*;
 import lotto.view.InputView;
 import lotto.view.OutputView;
 
-import static java.util.stream.Collectors.collectingAndThen;
-import static java.util.stream.Collectors.toList;
+import java.util.stream.Collectors;
 
 public class LottoController {
-    private final LottoTicketFactory lottoTicketFactory;
-
-    public LottoController() {
-        this.lottoTicketFactory = new LottoTicketFactory();
-    }
-
     public void run() {
-        Money inputMoney = new Money(InputView.inputMoney());
-        LottoTickets lottoTickets = lottoTicketFactory.buyLottoTickets(inputMoney);
-        WinningLotto winningLotto = getWinningLotto(lottoTickets);
-        showResult(lottoTickets, winningLotto);
+        Money money = new Money(InputView.inputMoney());
+        LottoTickets lottoTickets = getLottoTickets(money);
+        LottoTicket winningTicket = getWinningTicket(lottoTickets);
+        LottoResult lottoResult = getLottoResult(lottoTickets, winningTicket);
+        showResult(lottoResult, money);
     }
 
-    private WinningLotto getWinningLotto(LottoTickets lottoTickets) {
+    private LottoTickets getLottoTickets(Money money) {
+        LottoTicketFactory lottoTicketFactory = new LottoTicketFactory();
+        return new LottoTickets(lottoTicketFactory.buyLottoTickets(money));
+    }
+
+    private LottoTicket getWinningTicket(LottoTickets lottoTickets) {
         OutputView.printLottoTicketsCount(lottoTickets);
         OutputView.printLottoTickets(lottoTickets);
-        LottoTicket winningTicket = InputView.inputWinningNumbers().stream()
-                .map(LottoNumber::new)
-                .collect(collectingAndThen(toList(), LottoTicket::new));
-        LottoNumber bonusNumber = new LottoNumber(InputView.inputBonusNumber());
-        return new WinningLotto(winningTicket, bonusNumber);
+        return new LottoTicket(
+                InputView.inputWinningNumbers().stream()
+                        .map(LottoNumber::new)
+                        .collect(Collectors.toList()));
     }
 
-    private void showResult(LottoTickets lottoTickets, WinningLotto winningLotto) {
-        LottoResult lottoResult = winningLotto.checkPrizes(lottoTickets);
+    private LottoResult getLottoResult(LottoTickets lottoTickets, LottoTicket winningTicket) {
+        LottoNumber bonusNumber = new LottoNumber(InputView.inputBonusNumber());
+        WinningLotto winningLotto = new WinningLotto(winningTicket, bonusNumber);
+        return new LottoResult(lottoTickets.checkWinningTickets(winningLotto));
+    }
+
+    private void showResult(LottoResult lottoResult, Money money) {
         OutputView.printResultStatistic(lottoResult);
-        Money totalProfit = lottoResult.getTotalProfit();
-        double profitRate = totalProfit.divide(lottoResult.lottoResult().size());
-        OutputView.printProfitRate(profitRate);
+        OutputView.printProfitRate(lottoResult, money);
     }
 }
